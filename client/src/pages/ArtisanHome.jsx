@@ -7,15 +7,18 @@ import Header from '../components/Header';
 export default function ArtisanHome({ user, onLogout }) {
   const navigate = useNavigate();
 
+  // Extract first name dynamically from user account
+  const firstName = user?.name ? user.name.split(' ')[0] : 'Gurpreet';
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24 w-full">
       <Header user={user} onLogout={onLogout} />
 
       <main className="max-w-6xl mx-auto px-4 md:px-8 py-8 space-y-8">
-        {/* Header Greeting */}
+        {/* Header Greeting - Dynamic Name */}
         <div>
           <h1 className="text-3xl md:text-4xl font-black text-gray-900">
-            Hello, Gurpreet 👋
+            Hello, {firstName} 👋
           </h1>
           <p className="text-base font-medium text-gray-500 mt-1">
             Welcome back to your craft store
