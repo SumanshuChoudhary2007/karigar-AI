@@ -1,25 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, ArrowRight, UserCheck, ShoppingCart, Lock, Phone, User, X, Check } from 'lucide-react';
+import { Sparkles, ArrowRight, UserCheck, ShoppingCart, Lock, Phone, User, X, Check, AlertCircle } from 'lucide-react';
 import { apiService } from '../services/api';
 
 export default function Login({ onLoginSuccess }) {
   const [role, setRole] = useState('ARTISAN'); // ARTISAN or BUYER
-  const [phoneOrEmail, setPhoneOrEmail] = useState(''); // Empty by default for actual typing
-  const [password, setPassword] = useState(''); // Empty by default
+  const [phoneOrEmail, setPhoneOrEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [loading, setLoading] = useState(false);
-  
+  const [errorMsg, setErrorMsg] = useState('');
+
   // Google Account Chooser Modal state
   const [showGoogleModal, setShowGoogleModal] = useState(false);
   const [customGoogleEmail, setCustomGoogleEmail] = useState('');
   const [customGoogleName, setCustomGoogleName] = useState('');
-  const [showCustomGoogleInput, setShowCustomGoogleInput] = useState(false);
 
   const navigate = useNavigate();
 
-  // Try initializing real Google SDK if a valid VITE_GOOGLE_CLIENT_ID is provided
+  // Initialize real Google Identity SDK if real client ID present
   useEffect(() => {
     const realClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (realClientId && window.google && window.google.accounts) {
@@ -49,11 +49,14 @@ export default function Login({ onLoginSuccess }) {
 
   const handleGoogleCredentialResponse = async (response) => {
     setLoading(true);
+    setErrorMsg('');
     const res = await apiService.googleLogin(role, response.credential);
     setLoading(false);
     if (res && res.success) {
       onLoginSuccess(res.user);
       navigate(role === 'BUYER' ? '/buyer' : '/artisan');
+    } else if (res && res.error) {
+      setErrorMsg(res.error);
     }
   };
 
@@ -62,13 +65,19 @@ export default function Login({ onLoginSuccess }) {
     e.preventDefault();
     if (!phoneOrEmail || !password) return;
     setLoading(true);
-    // Derive name from register form or phoneOrEmail (e.g., if phone is typed, name is extracted)
-    const displayName = fullName || (phoneOrEmail.includes('@') ? phoneOrEmail.split('@')[0] : phoneOrEmail);
-    const res = await apiService.login(phoneOrEmail, password, role, displayName);
+    setErrorMsg('');
+
+    const res = await apiService.login(phoneOrEmail, password, role, fullName, isRegisterMode);
     setLoading(false);
+
     if (res && res.success) {
       onLoginSuccess(res.user);
       navigate(res.user.role === 'BUYER' ? '/buyer' : '/artisan');
+    } else if (res && res.error) {
+      setErrorMsg(res.error);
+      if (res.notFound) {
+        setIsRegisterMode(true);
+      }
     }
   };
 
@@ -94,23 +103,12 @@ export default function Login({ onLoginSuccess }) {
   const handleSelectGoogleAccount = async (email, name) => {
     setShowGoogleModal(false);
     setLoading(true);
+    setErrorMsg('');
     const res = await apiService.googleLogin(role, null, email, name);
     setLoading(false);
     if (res && res.success) {
       onLoginSuccess(res.user);
       navigate(role === 'BUYER' ? '/buyer' : '/artisan');
-    }
-  };
-
-  // Quick Demo Login handler
-  const handleDemoLogin = async (demoRole) => {
-    setLoading(true);
-    const demoPhone = demoRole === 'ARTISAN' ? '9876543210' : '9123456789';
-    const res = await apiService.login(demoPhone, 'password123', demoRole);
-    setLoading(false);
-    if (res && res.success) {
-      onLoginSuccess(res.user);
-      navigate(demoRole === 'BUYER' ? '/buyer' : '/artisan');
     }
   };
 
@@ -139,7 +137,7 @@ export default function Login({ onLoginSuccess }) {
             }`}
           >
             <UserCheck className="w-4 h-4" />
-            <span>Artisan Login</span>
+            <span>Artisan Account</span>
           </button>
           <button
             type="button"
@@ -149,9 +147,17 @@ export default function Login({ onLoginSuccess }) {
             }`}
           >
             <ShoppingCart className="w-4 h-4" />
-            <span>Buyer Login</span>
+            <span>Buyer Account</span>
           </button>
         </div>
+
+        {/* Error Alert Display */}
+        {errorMsg && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-2xl text-xs font-bold flex items-center space-x-2 text-left mt-3">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-600" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
 
         {/* 1. GOOGLE SIGN IN BUTTON */}
         <div className="mt-4">
@@ -177,12 +183,12 @@ export default function Login({ onLoginSuccess }) {
         <div className="relative flex py-3 items-center">
           <div className="flex-grow border-t border-gray-200"></div>
           <span className="flex-shrink mx-3 text-xs font-bold text-gray-400 uppercase">
-            or manual login
+            {isRegisterMode ? 'or create account' : 'or login with credentials'}
           </span>
           <div className="flex-grow border-t border-gray-200"></div>
         </div>
 
-        {/* 2. MANUAL TYPING LOGIN FORM */}
+        {/* 2. REAL MANUAL TYPING LOGIN & SIGNUP FORM */}
         <form onSubmit={handleManualSubmit} className="space-y-3.5 text-left">
           {isRegisterMode && (
             <div>
@@ -195,7 +201,7 @@ export default function Login({ onLoginSuccess }) {
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Enter full name (e.g. Sam)"
+                  placeholder="Enter your full name"
                   className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
                   required
                 />
@@ -213,7 +219,7 @@ export default function Login({ onLoginSuccess }) {
                 type="text"
                 value={phoneOrEmail}
                 onChange={(e) => setPhoneOrEmail(e.target.value)}
-                placeholder="Enter phone or email"
+                placeholder="Enter 10-digit phone or email"
                 className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
                 required
               />
@@ -244,44 +250,22 @@ export default function Login({ onLoginSuccess }) {
               role === 'BUYER' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-amber-600 hover:bg-amber-700'
             }`}
           >
-            <span>{loading ? 'Logging in...' : isRegisterMode ? 'Create Account' : `Login as ${role === 'BUYER' ? 'Buyer' : 'Artisan'}`}</span>
+            <span>{loading ? 'Processing...' : isRegisterMode ? 'Create Real Account' : `Login to ${role === 'BUYER' ? 'Buyer' : 'Artisan'} Account`}</span>
             <ArrowRight className="w-5 h-5" />
           </button>
         </form>
 
-        <div className="mt-2 text-center">
+        <div className="mt-3 text-center">
           <button
             type="button"
-            onClick={() => setIsRegisterMode(!isRegisterMode)}
+            onClick={() => {
+              setIsRegisterMode(!isRegisterMode);
+              setErrorMsg('');
+            }}
             className="text-xs font-bold text-amber-700 hover:underline"
           >
-            {isRegisterMode ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+            {isRegisterMode ? 'Already have an account? Sign in' : "Don't have an account? Sign up now"}
           </button>
-        </div>
-
-        {/* 3. QUICK 1-TAP DEMO LOGIN SECTION */}
-        <div className="mt-6 border-t border-gray-100 pt-5">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-            Quick 1-Tap Demo Login
-          </p>
-
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => handleDemoLogin('ARTISAN')}
-              className="py-3 px-3 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 font-bold rounded-2xl text-xs md:text-sm flex flex-col items-center justify-center space-y-1 active-press"
-            >
-              <UserCheck className="w-5 h-5 text-amber-600" />
-              <span>Login as Artisan</span>
-            </button>
-
-            <button
-              onClick={() => handleDemoLogin('BUYER')}
-              className="py-3 px-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-900 font-bold rounded-2xl text-xs md:text-sm flex flex-col items-center justify-center space-y-1 active-press"
-            >
-              <ShoppingCart className="w-5 h-5 text-blue-600" />
-              <span>Login as Buyer</span>
-            </button>
-          </div>
         </div>
       </div>
 
@@ -305,73 +289,39 @@ export default function Login({ onLoginSuccess }) {
             </div>
 
             <p className="text-xs font-semibold text-gray-500">
-              Choose an account to continue to <strong className="text-gray-900">Karigar AI</strong>
+              Enter your Google account details to log in to <strong className="text-gray-900">Karigar AI</strong>:
             </p>
 
-            {/* Google Accounts Options */}
-            <div className="space-y-2">
-              <button
-                onClick={() => handleSelectGoogleAccount('sumanshu2007@gmail.com', 'Sumanshu (Sam)')}
-                className="w-full p-3 rounded-2xl border border-amber-200 bg-amber-50/50 hover:bg-amber-50 flex items-center justify-between transition active-press"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-amber-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
-                    S
-                  </div>
-                  <div>
-                    <span className="font-black text-sm text-gray-900 block">Sumanshu (Sam)</span>
-                    <span className="text-xs text-gray-500 font-medium block">sumanshu2007@gmail.com</span>
-                  </div>
-                </div>
-                <Check className="w-4 h-4 text-amber-600" />
-              </button>
+            {/* Real Google Account Input */}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Gmail Address</label>
+                <input
+                  type="email"
+                  placeholder="yourname@gmail.com"
+                  value={customGoogleEmail}
+                  onChange={(e) => setCustomGoogleEmail(e.target.value)}
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Full Name</label>
+                <input
+                  type="text"
+                  placeholder="Your Name"
+                  value={customGoogleName}
+                  onChange={(e) => setCustomGoogleName(e.target.value)}
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900"
+                />
+              </div>
 
               <button
-                onClick={() => handleSelectGoogleAccount('gurpreet.artisan@gmail.com', 'Gurpreet Kaur')}
-                className="w-full p-3 rounded-2xl border border-gray-200 hover:bg-gray-50 flex items-center justify-between transition active-press"
+                onClick={() => handleSelectGoogleAccount(customGoogleEmail || 'user@gmail.com', customGoogleName || 'User')}
+                className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs shadow-sm"
               >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-amber-500 text-white font-bold flex items-center justify-center text-sm shadow-sm">
-                    G
-                  </div>
-                  <div>
-                    <span className="font-black text-sm text-gray-900 block">Gurpreet Kaur</span>
-                    <span className="text-xs text-gray-500 font-medium block">gurpreet.artisan@gmail.com</span>
-                  </div>
-                </div>
+                Sign In & Create Account
               </button>
-
-              {!showCustomGoogleInput ? (
-                <button
-                  onClick={() => setShowCustomGoogleInput(true)}
-                  className="w-full p-3 rounded-2xl border border-dashed border-gray-300 text-gray-700 font-bold text-xs hover:bg-gray-50 flex items-center justify-center space-x-2"
-                >
-                  <span>+ Use another Google account</span>
-                </button>
-              ) : (
-                <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200 space-y-2">
-                  <input
-                    type="email"
-                    placeholder="Enter your Gmail address"
-                    value={customGoogleEmail}
-                    onChange={(e) => setCustomGoogleEmail(e.target.value)}
-                    className="w-full p-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Enter your name"
-                    value={customGoogleName}
-                    onChange={(e) => setCustomGoogleName(e.target.value)}
-                    className="w-full p-2 bg-white border border-gray-200 rounded-xl text-xs font-semibold"
-                  />
-                  <button
-                    onClick={() => handleSelectGoogleAccount(customGoogleEmail || 'custom@gmail.com', customGoogleName || 'Custom User')}
-                    className="w-full py-2 bg-amber-600 text-white font-bold rounded-xl text-xs"
-                  >
-                    Continue with this Account
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         </div>

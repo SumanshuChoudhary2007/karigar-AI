@@ -11,18 +11,11 @@ import Buyers from './pages/Buyers';
 import Orders from './pages/Orders';
 import Profile from './pages/Profile';
 import BuyerHome from './pages/BuyerHome';
-import { INITIAL_PRODUCTS } from './data/demoData';
 import { apiService } from './services/api';
 
 export default function App() {
-  const [user, setUser] = useState({
-    id: 'artisan-1',
-    phone: '9876543210',
-    name: 'Gurpreet Kaur',
-    role: 'ARTISAN'
-  });
-
-  const [products, setProducts] = useState(INITIAL_PRODUCTS);
+  const [user, setUser] = useState(null); // Real initial auth state (null requires login/signup)
+  const [products, setProducts] = useState([]);
   const [draftProduct, setDraftProduct] = useState(null);
 
   useEffect(() => {
@@ -33,7 +26,7 @@ export default function App() {
       }
     }
     loadData();
-  }, []);
+  }, [user]);
 
   const handleLogout = () => {
     setUser(null);

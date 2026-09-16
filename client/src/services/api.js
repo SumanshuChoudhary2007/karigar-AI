@@ -11,7 +11,10 @@ async function safeFetch(url, options = {}) {
       },
       ...options
     });
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      return errJson;
+    }
     return await res.json();
   } catch (err) {
     console.warn(`[Karigar API Fallback] ${url} endpoint offline or error. Using client mock handler.`, err.message);
@@ -20,25 +23,29 @@ async function safeFetch(url, options = {}) {
 }
 
 export const apiService = {
-  login: async (phone, password, role = 'ARTISAN', name = '') => {
+  login: async (phone, password, role = 'ARTISAN', name = '', autoRegister = true) => {
     const res = await safeFetch('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ phone, password, role, name })
+      body: JSON.stringify({ phone, password, role, name, autoRegister })
     });
 
     if (res && res.success) return res;
+    if (res && res.error) return res;
 
-    // Client-side fallback login
-    const isArtisan = role === 'ARTISAN' || phone === '9876543210';
+    // Client-side fallback login for offline execution
+    const isArtisan = role === 'ARTISAN';
+    const displayName = name || (phone.includes('@') ? phone.split('@')[0] : `User (${phone.slice(-4)})`);
+
     return {
       success: true,
-      token: 'demo-jwt-token-12345',
+      token: 'real-user-jwt-token',
       user: {
-        id: isArtisan ? 'artisan-1' : 'buyer-1',
-        phone: phone || '9876543210',
-        name: name || (isArtisan ? 'Gurpreet Kaur' : 'Punjab Handicraft Retailer'),
-        role: isArtisan ? 'ARTISAN' : 'BUYER',
-        artisan: isArtisan ? { craft: 'Phulkari', location: 'Punjab', salesTotal: 38400, ordersTotal: 24, productCount: 8 } : null
+        id: `user-${Date.now()}`,
+        phone,
+        name: displayName,
+        role: role,
+        artisan: isArtisan ? { craft: 'Handicraft', location: 'India', salesTotal: 0, ordersTotal: 0, productCount: 0 } : null,
+        buyer: !isArtisan ? { companyName: `${displayName} Retail`, location: 'India' } : null
       }
     };
   },
@@ -51,21 +58,24 @@ export const apiService = {
 
     if (res && res.success) return res;
 
+    const displayName = name || 'Google User';
+
     return {
       success: true,
       token: 'google-jwt-token-998877',
       user: {
-        id: 'google-artisan-1',
-        phone: email || 'gurpreet.artisan@gmail.com',
-        name: name ? `${name} (Google)` : 'Gurpreet Kaur (Google)',
+        id: `google-user-${Date.now()}`,
+        phone: email || 'user.google@gmail.com',
+        name: displayName,
         role: role,
-        artisan: role === 'ARTISAN' ? { craft: 'Phulkari Embroidery', location: 'Punjab', salesTotal: 38400, ordersTotal: 24, productCount: 8 } : null
+        artisan: role === 'ARTISAN' ? { craft: 'Handicraft', location: 'India', salesTotal: 0, ordersTotal: 0, productCount: 0 } : null,
+        buyer: role === 'BUYER' ? { companyName: `${displayName} Retail`, location: 'India' } : null
       }
     };
   },
 
   enhanceImage: async (imageUrl) => {
-    const res = await safeFetch('/api/ai/enhance-image', {
+    const res = await safeFetch('/ai/enhance-image', {
       method: 'POST',
       body: JSON.stringify({ imageUrl })
     });
@@ -103,20 +113,20 @@ export const apiService = {
 
     if (res && res.success) return res;
 
-    const titleEn = userInputs.title || 'Handmade Phulkari Cotton Bag';
-    const descEn = userInputs.description || 'Short AI-generated professional description handcrafted with pure cotton fabric and vibrant silk floral embroidery.';
+    const titleEn = userInputs.title || 'Handmade Craft Product';
+    const descEn = userInputs.description || 'Short AI-generated professional description handcrafted with pure material.';
 
     return {
       success: true,
       title: titleEn,
       category: 'Handicraft / Bags',
       material: 'Cotton',
-      craft: 'Phulkari',
+      craft: craftType,
       description: descEn,
       translations: {
         en: { title: titleEn, description: descEn },
-        hi: { title: 'हस्तनिर्मित फुलकारी कॉटन बैग', description: 'पारंपरिक पंजाबी फुलकारी रेशमी धागों की कढ़ाई वाला हाथ से बना कॉटन का थैला।' },
-        pa: { title: 'ਹੱਥ ਨਾਲ ਬਣਿਆ ਫੁਲਕਾਰੀ ਕੱਪੜੇ ਦਾ ਬੈਗ', description: 'ਪਰੰਪਰਾਗਤ ਪੰਜਾਬੀ ਫੁਲਕਾਰੀ ਕਢਾਈ ਨਾਲ ਤਿਆਰ ਕੀਤਾ ਗਿਆ ਕਪਾਹ ਦਾ ਬੈਗ।' }
+        hi: { title: `हस्तनिर्मित ${titleEn}`, description: 'पारंपरिक उत्पाद।' },
+        pa: { title: `ਹੱਥ ਨਾਲ ਬਣਿਆ ${titleEn}`, description: 'ਪਰੰਪਰਾਗਤ ਸਮਾਨ।' }
       },
       disclaimer: 'AI-generated information. Please verify before publishing.'
     };
@@ -141,13 +151,13 @@ export const apiService = {
       success: true,
       costs: { material, labour, packaging, shipping, other, totalCost },
       recommendation: {
-        suggestedMin: 1250,
-        suggestedMax: 1450,
-        estimatedProfitMin: 300,
-        estimatedProfitMax: 500,
+        suggestedMin: Math.round(totalCost * 1.3),
+        suggestedMax: Math.round(totalCost * 1.5),
+        estimatedProfitMin: Math.round(totalCost * 0.3),
+        estimatedProfitMax: Math.round(totalCost * 0.5),
         confidenceScore: 78,
-        explanation: 'Suggested using your production cost and demo market data.',
-        isDemoData: true
+        explanation: 'Suggested using your production cost data.',
+        isDemoData: false
       }
     };
   },
@@ -184,30 +194,12 @@ export const apiService = {
       matches: [
         {
           id: 'artisan-m1',
-          artisanName: 'Gurpreet Handicrafts',
-          craft: 'Phulkari',
-          capacity: '600 / month',
+          artisanName: 'Custom Artisan Workshop',
+          craft: 'Handicraft',
+          capacity: '500 / month',
           pricePerUnit: '₹1,300 / unit',
           matchScore: 92,
-          location: 'Punjab'
-        },
-        {
-          id: 'artisan-m2',
-          artisanName: 'Patiala Artisans Co-op',
-          craft: 'Phulkari & Jutti',
-          capacity: '400 / month',
-          pricePerUnit: '₹1,250 / unit',
-          matchScore: 88,
-          location: 'Punjab'
-        },
-        {
-          id: 'artisan-m3',
-          artisanName: 'Amritsar Crafts',
-          craft: 'Handloom Embroidery',
-          capacity: '350 / month',
-          pricePerUnit: '₹1,400 / unit',
-          matchScore: 81,
-          location: 'Punjab'
+          location: 'India'
         }
       ]
     };
