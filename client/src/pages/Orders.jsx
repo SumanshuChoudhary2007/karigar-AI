@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Truck, CheckCircle2, ChevronRight, X, Calendar, Hash } from 'lucide-react';
+import { Package, Truck, CheckCircle2, ChevronRight, X, Calendar, Hash, ShoppingBag } from 'lucide-react';
 import Header from '../components/Header';
 import BottomNav from '../components/BottomNav';
 import { apiService } from '../services/api';
@@ -7,64 +7,76 @@ import { apiService } from '../services/api';
 export default function Orders({ user, onLogout }) {
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadOrders() {
       const data = await apiService.getOrders();
       setOrders(data || []);
+      setLoading(false);
     }
     loadOrders();
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="min-h-screen bg-gray-50 pb-24 w-full">
       <Header user={user} onLogout={onLogout} />
 
-      <main className="max-w-md mx-auto px-4 py-5 space-y-5">
+      <main className="max-w-6xl mx-auto px-4 md:px-8 py-8 space-y-6">
         <div>
-          <h1 className="text-2xl font-black text-gray-900">My Orders</h1>
-          <p className="text-xs font-medium text-gray-500">Track active dispatch & buyer orders</p>
+          <h1 className="text-3xl font-black text-gray-900">My Orders</h1>
+          <p className="text-sm font-medium text-gray-500">Track active dispatch & buyer orders</p>
         </div>
 
-        {/* Orders List */}
-        <div className="space-y-3">
-          {orders.map((order) => (
-            <div
-              key={order.id}
-              onClick={() => setSelectedOrder(order)}
-              className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm active-press cursor-pointer space-y-3"
-            >
-              <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-                <div>
-                  <span className="text-xs font-black text-amber-700 tracking-wider">
-                    {order.orderNumber}
+        {/* Genuine Orders List */}
+        {orders.length === 0 ? (
+          <div className="bg-white rounded-3xl p-12 text-center border border-gray-100 shadow-sm space-y-3">
+            <ShoppingBag className="w-12 h-12 text-gray-300 mx-auto" />
+            <h2 className="text-lg font-bold text-gray-800">No active orders yet</h2>
+            <p className="text-sm text-gray-500 max-w-sm mx-auto">
+              When wholesale buyers place orders for your craft products, they will appear here with live delivery tracking.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {orders.map((order) => (
+              <div
+                key={order.id}
+                onClick={() => setSelectedOrder(order)}
+                className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm active-press cursor-pointer space-y-4"
+              >
+                <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+                  <div>
+                    <span className="text-xs font-black text-amber-700 tracking-wider">
+                      {order.orderNumber}
+                    </span>
+                    <h2 className="text-lg font-extrabold text-gray-900">
+                      {order.buyerName}
+                    </h2>
+                  </div>
+                  <span className="px-3 py-1 bg-amber-50 text-amber-800 font-bold text-xs rounded-full border border-amber-200">
+                    {order.status}
                   </span>
-                  <h2 className="text-base font-extrabold text-gray-900">
-                    {order.buyerName}
-                  </h2>
                 </div>
-                <span className="px-3 py-1 bg-amber-50 text-amber-800 font-bold text-xs rounded-full border border-amber-200">
-                  {order.status}
-                </span>
-              </div>
 
-              <div className="flex justify-between items-center text-sm">
-                <div>
-                  <span className="text-gray-500 font-medium block text-xs">{order.productTitle}</span>
-                  <span className="text-lg font-black text-gray-900 mt-0.5 block">
-                    ₹{order.totalAmount?.toLocaleString()}
-                  </span>
+                <div className="flex justify-between items-center text-sm">
+                  <div>
+                    <span className="text-gray-500 font-medium block text-xs">{order.productTitle}</span>
+                    <span className="text-xl font-black text-gray-900 mt-1 block">
+                      ₹{order.totalAmount?.toLocaleString()}
+                    </span>
+                  </div>
+                  <ChevronRight className="w-6 h-6 text-gray-400" />
                 </div>
-                <ChevronRight className="w-5 h-5 text-gray-400" />
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Order Details Delivery Tracking Modal */}
         {selectedOrder && (
-          <div className="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-sm flex items-end justify-center p-0 sm:p-4">
-            <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-200">
+          <div className="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-md rounded-3xl p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-200">
               <div className="flex justify-between items-center border-b border-gray-100 pb-3">
                 <div>
                   <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Order Details</span>

@@ -1,14 +1,19 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, Search, ShoppingBag, Lightbulb } from 'lucide-react';
+import { PlusCircle, Search, ShoppingBag, Lightbulb, PackageX } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
 import Header from '../components/Header';
 
-export default function ArtisanHome({ user, onLogout }) {
+export default function ArtisanHome({ user, onLogout, products = [], orders = [] }) {
   const navigate = useNavigate();
 
   // Extract first name dynamically from user account
-  const firstName = user?.name ? user.name.split(' ')[0] : 'Gurpreet';
+  const firstName = user?.name ? user.name.split(' ')[0] : 'Artisan';
+
+  // Genuine Dynamic Metrics from user's real DB records
+  const salesTotal = user?.artisan?.salesTotal || 0;
+  const ordersTotal = user?.artisan?.ordersTotal || orders.length || 0;
+  const productsTotal = products.length || user?.artisan?.productCount || 0;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24 w-full">
@@ -25,21 +30,27 @@ export default function ArtisanHome({ user, onLogout }) {
           </p>
         </div>
 
-        {/* 3 Important Stats Cards */}
+        {/* 3 Genuine Dynamic Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm text-center md:text-left flex md:block justify-between items-center">
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Sales</span>
-            <span className="text-2xl md:text-3xl font-black text-amber-600 block mt-1">₹38,400</span>
+            <span className="text-2xl md:text-3xl font-black text-amber-600 block mt-1">
+              ₹{salesTotal.toLocaleString()}
+            </span>
           </div>
 
           <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm text-center md:text-left flex md:block justify-between items-center">
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Orders</span>
-            <span className="text-2xl md:text-3xl font-black text-gray-900 block mt-1">24</span>
+            <span className="text-2xl md:text-3xl font-black text-gray-900 block mt-1">
+              {ordersTotal}
+            </span>
           </div>
 
           <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm text-center md:text-left flex md:block justify-between items-center">
             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Products</span>
-            <span className="text-2xl md:text-3xl font-black text-gray-900 block mt-1">8</span>
+            <span className="text-2xl md:text-3xl font-black text-gray-900 block mt-1">
+              {productsTotal}
+            </span>
           </div>
         </div>
 
@@ -80,21 +91,33 @@ export default function ArtisanHome({ user, onLogout }) {
               <span>My Orders</span>
             </div>
             <span className="text-xs font-bold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-full">
-              1 Active
+              {ordersTotal > 0 ? `${ordersTotal} Orders` : '0 Active'}
             </span>
           </button>
         </div>
 
-        {/* AI Suggestion Card */}
-        <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 shadow-sm">
-          <div className="flex items-center space-x-2 text-amber-900 font-bold text-base mb-2">
-            <Lightbulb className="w-6 h-6 text-amber-600 fill-amber-200" />
-            <span>AI Suggestion</span>
+        {/* Dynamic Business Insight Card */}
+        {productsTotal === 0 ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 shadow-sm flex items-start space-x-4">
+            <Lightbulb className="w-7 h-7 text-amber-600 fill-amber-200 flex-shrink-0 mt-1" />
+            <div>
+              <h3 className="font-bold text-amber-950 text-base">Get Started by Adding Your First Product</h3>
+              <p className="text-sm font-medium text-amber-900 leading-relaxed mt-1">
+                "Upload a photo or speak in your local language to create your catalog and get matched with B2B wholesale buyers!"
+              </p>
+            </div>
           </div>
-          <p className="text-base font-medium text-amber-900 leading-relaxed">
-            "Your Phulkari Bag is getting many views. Consider reviewing its price."
-          </p>
-        </div>
+        ) : (
+          <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 shadow-sm">
+            <div className="flex items-center space-x-2 text-amber-900 font-bold text-base mb-2">
+              <Lightbulb className="w-6 h-6 text-amber-600 fill-amber-200" />
+              <span>AI Business Insight</span>
+            </div>
+            <p className="text-base font-medium text-amber-900 leading-relaxed">
+              "Your catalog is published. Keep pricing verified to attract wholesale buyer orders."
+            </p>
+          </div>
+        )}
       </main>
 
       <BottomNav role="ARTISAN" />
