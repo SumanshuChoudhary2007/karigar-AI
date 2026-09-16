@@ -1,0 +1,28 @@
+{
+  "name": "karigar-ai",
+  "version": "1.0.0",
+  "description": "AI-Driven Market Linkage and Smart Cataloging Mobile Application for Marginalized Artisans - SIH 2026 (SIH26090)",
+  "scripts": {
+    "setup": "npm install --prefix server && npm install --prefix client",
+    "seed": "npm run seed --prefix server",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "build": "npm run build --prefix client"
+  },
+  "keywords": [
+    "sih2026",
+    "artisans",
+    "karigar-ai",
+    "market-linkage",
+    "smart-cataloging"
+  ],
+  "author": "Karigar AI Team",
+  "license": "MIT",
+  "devDependencies": {
+    "prisma": "^6.19.3"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3"
+  }
+}

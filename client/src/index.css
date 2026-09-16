@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #F3F4F6;
+    color: #111827;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Smooth micro-animations for touch buttons & mobile transitions */
+.active-press {
+  transition: transform 0.1s ease, opacity 0.1s ease;
+}
+.active-press:active {
+  transform: scale(0.98);
+}
+
+/* Custom scrollbar for mobile container */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #E5E7EB;
+  border-radius: 9999px;
+}

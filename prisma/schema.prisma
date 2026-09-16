@@ -1,0 +1,191 @@
+// Prisma Schema for Karigar AI (SIH26090)
+// Configured for MySQL (XAMPP default port 3306)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ARTISAN
+  BUYER
+  ADMIN
+}
+
+model User {
+  id        String   @id @default(uuid())
+  phone     String   @unique
+  password  String
+  name      String
+  role      Role     @default(ARTISAN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  artisan   Artisan?
+  buyer     Buyer?
+}
+
+model Artisan {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  craft       String   // e.g., Phulkari, Terracotta, Jutti
+  location    String   // e.g., Punjab, Rajasthan
+  experience  Int      // years
+  salesTotal  Float    @default(38400.0)
+  ordersTotal Int      @default(24)
+
+  products    Product[]
+  story       ArtisanStory?
+  orders      Order[]
+}
+
+model Buyer {
+  id           String             @id @default(uuid())
+  userId       String             @unique
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName  String             // e.g., Punjab Handicraft Retailer
+  location     String
+  businessType String             // Retailer, Wholesaler, Gift Co
+
+  requirements BuyerRequirement[]
+  orders       Order[]
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  artisanId   String
+  artisan     Artisan  @relation(fields: [artisanId], references: [id], onDelete: Cascade)
+  title       String
+  category    String
+  material    String
+  craft       String
+  description String   @db.Text
+  status      String   @default("PUBLISHED") // DRAFT, PUBLISHED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  images          ProductImage[]
+  translations    ProductTranslation[]
+  cost            ProductCost?
+  recommendation  PricingRecommendation?
+  orderItems      OrderItem[]
+  buyerMatches    BuyerMatch[]
+}
+
+model ProductImage {
+  id          String   @id @default(uuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  originalUrl String   @db.Text
+  cleanedUrl  String   @db.Text
+  isPrimary   Boolean  @default(true)
+}
+
+model ProductTranslation {
+  id          String   @id @default(uuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  language    String   // en, hi, pa
+  title       String
+  description String   @db.Text
+}
+
+model ProductCost {
+  id           String   @id @default(uuid())
+  productId    String   @unique
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  materialCost Float
+  labourCost   Float
+  packaging    Float
+  shipping     Float
+  otherCost    Float
+  totalCost    Float
+}
+
+model PricingRecommendation {
+  id               String   @id @default(uuid())
+  productId        String   @unique
+  product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  suggestedMin     Float
+  suggestedMax     Float
+  estimatedProfitMin Float
+  estimatedProfitMax Float
+  confidenceScore  Int      // e.g. 78 (%)
+  explanation      String   @db.Text
+  isDemoData       Boolean  @default(true)
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  orderNumber String      @unique // e.g. #KAR1024
+  artisanId   String
+  artisan     Artisan     @relation(fields: [artisanId], references: [id])
+  buyerId     String
+  buyer       Buyer       @relation(fields: [buyerId], references: [id])
+  totalAmount Float
+  status      String      @default("Processing") // Placed, Confirmed, Packed, Picked Up, In Transit, Delivered
+  createdAt   DateTime    @default(now())
+
+  items       OrderItem[]
+  delivery    Delivery?
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Float
+}
+
+model BuyerRequirement {
+  id          String   @id @default(uuid())
+  buyerId     String
+  buyer       Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  productName String   // e.g. Handmade Bags
+  quantity    Int      // e.g. 500
+  budgetPerUnit Float  // e.g. 1500
+  deliveryDays Int     // e.g. 30
+  location    String   // e.g. Punjab
+  status      String   @default("OPEN")
+  createdAt   DateTime @default(now())
+
+  matches     BuyerMatch[]
+}
+
+model BuyerMatch {
+  id            String           @id @default(uuid())
+  requirementId String
+  requirement   BuyerRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  matchScore    Int              // percentage e.g. 92
+  reasons       String           @db.Text // JSON string array of matching reasons
+}
+
+model Delivery {
+  id               String   @id @default(uuid())
+  orderId          String   @unique
+  order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  trackingId       String
+  currentStep      Int      @default(3) // 1 to 6
+  statusLabel      String   @default("Picked Up")
+  expectedDelivery DateTime
+  carrier          String   @default("IndiaPost CraftExpress")
+}
+
+model ArtisanStory {
+  id        String   @id @default(uuid())
+  artisanId String   @unique
+  artisan   Artisan  @relation(fields: [artisanId], references: [id], onDelete: Cascade)
+  rawStory  String   @db.Text
+  aiEnhancedStory String @db.Text
+  heritage  String
+}
